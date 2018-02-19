@@ -1,0 +1,7 @@
+[package]
+name = "timer"
+version = "0.1.0"
+authors = ["Hernawan Fa'iz Abdillah <hernawan.faiz@abdillah.me>"]
+
+[dependencies]
+ncurses = "5.91.0"
