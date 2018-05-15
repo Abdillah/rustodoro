@@ -317,18 +317,15 @@ impl RenderInfo {
 
     /* This function may induce side-effect */
     fn render(self, model: &Model) -> Result<Self, String> {
-        let new = Self::from_model(model);
-        if new != self {
-            // Start in the center
-            let win = ncurses::newwin(7, 36, self.timer_pos_y - 1, self.timer_pos_x - 2);
-            ncurses::box_(win, 0, 0);
-            ncurses::wrefresh(win);
+        // Start in the center
+        let win = ncurses::newwin(7, 36, self.timer_pos_y - 1, self.timer_pos_x - 2);
+        ncurses::box_(win, 0, 0);
+        ncurses::wrefresh(win);
 
-            ncurses::mvprintw(ncurses::LINES() - 1, 0, "                                                ");
-            ncurses::mvprintw(ncurses::LINES() - 1, 0, self.message.as_str());
+        ncurses::mvprintw(ncurses::LINES() - 1, 0, "                                                ");
+        ncurses::mvprintw(ncurses::LINES() - 1, 0, self.message.as_str());
 
-            typewriter_print(self.timer_pos_x, self.timer_pos_y, self.time.clone().as_str());
-        }
+        typewriter_print(self.timer_pos_x, self.timer_pos_y, self.time.clone().as_str());
 
         Ok(self)
     }
