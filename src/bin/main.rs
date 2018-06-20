@@ -1,3 +1,4 @@
+extern crate libc;
 extern crate ncurses;
 
 use std::thread;
@@ -8,17 +9,21 @@ use std::error::Error;
 /* ----------- */
 /* -- Timer -- */
 /* ----------- */
-fn timer_tick() -> (std::thread::JoinHandle<()>, mpsc::Sender<bool>,  mpsc::Receiver<bool>)
+fn timer_tick() -> (std::thread::JoinHandle<()>, mpsc::Sender<u64>,  mpsc::Receiver<u64>)
 {
-    let (tx, rx): (mpsc::Sender<bool>, mpsc::Receiver<bool>) = mpsc::channel();
+    let (tx, rx): (mpsc::Sender<u64>, mpsc::Receiver<u64>) = mpsc::channel();
 
     let tx_thread = tx.clone();
     let thread = thread::spawn(move || {
         loop {
-            for _ in 0..1001 {
-                thread::sleep(Duration::from_millis(1));
+            let mut spec;
+            unsafe {
+                // libc::timespec { tv_sec: 0, tv_nsec: 0 };
+                spec = std::mem::uninitialized();
+                libc::clock_gettime(libc::CLOCK_REALTIME, &mut spec);
             }
-            tx_thread.send(true).unwrap();
+
+            tx_thread.send(spec.tv_sec as u64).unwrap();
         }
     });
 
@@ -378,14 +383,16 @@ fn main() {
         }
 
         // Query for time ticks
-        let timetick: Option<bool> = rx.try_recv()
+        let timetick: Option<u64> = rx.try_recv()
         .map_err(|e| if e == mpsc::TryRecvError::Disconnected {
             panic!("{:?}", e.cause().unwrap())
         } else { e })
         .ok();
 
+
+
         if model.is_timer_run {
-            if let Some(true) = timetick {
+            if let Some(nowtick) = timetick {
                 // Send Decrement Message!
                 model = model.update(Message::Decrement);
 
