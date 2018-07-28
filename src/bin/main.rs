@@ -249,8 +249,9 @@ impl RenderState {
 
     pub fn diff_state(&self, model: &Model) -> Self {
         let mut rstate = Self::from_model(model);
-        for (key, val) in &self.current_state {
-            if val.clone() != rstate.current_state[key] {
+        for (key, val) in &rstate.current_state {
+            let currval = if self.current_state.contains_key(key) { self.current_state[key].clone() } else { "".to_string() };
+            if currval != val.clone() {
                 rstate.dirty_keys.push(key.clone());
             }
         }
@@ -263,14 +264,16 @@ impl RenderState {
 fn render(rstate: RenderState, model: &Model) -> Result<RenderState, String> {
     let newrstate = rstate.diff_state(model);
 
-    let timer_pos_x = (ncurses::COLS()/2i32 - 17) - 1;
-    let timer_pos_y = (ncurses::LINES()/2i32 - 3) - 2;
+    if newrstate.dirty_keys.contains(&"time".to_string()) {
+        let timer_pos_x = (ncurses::COLS()/2i32 - 17) - 1;
+        let timer_pos_y = (ncurses::LINES()/2i32 - 3) - 2;
 
-    let win = ncurses::newwin(7, 36, timer_pos_y - 1, timer_pos_x - 2);
-    ncurses::box_(win, 0, 0);
-    ncurses::wrefresh(win);
+        let win = ncurses::newwin(7, 36, timer_pos_y - 1, timer_pos_x - 2);
+        ncurses::box_(win, 0, 0);
+        ncurses::wrefresh(win);
 
-    typewriter_print(timer_pos_x, timer_pos_y, newrstate.current_state["time"].clone().as_str());
+        typewriter_print(timer_pos_x, timer_pos_y, newrstate.current_state["time"].clone().as_str());
+    }
 
     Ok(newrstate)
 }
@@ -281,27 +284,20 @@ fn render(rstate: RenderState, model: &Model) -> Result<RenderState, String> {
 fn main() {
     println!("Timer v0.1.0");
 
+
     let mut model = Model::default();
-    let mut rstate = RenderState::from_model(&model);
-    rstate = render(rstate, &model).unwrap();
+    let mut rstate = RenderState::default();
 
     gui_start();
+    rstate = render(rstate, &model).unwrap();
 
     let timer = timer::Timer::new();
 
     loop {
-        // Query for keypress
         let ch = match std::char::from_u32(ncurses::getch() as u32) {
             Some(ch) => ch,
             None => '\0'
         };
-
-        model = if model.is_started {
-            if let Some(nowtick) = timer.get_time() {
-                // Send Decrement Message!
-                model.update(Message::TriggerTime(nowtick))
-            } else { model }
-        } else { model };
 
         model = match ch {
             'q' => model.update(Message::Quit),
@@ -322,11 +318,15 @@ fn main() {
             _ => model
         };
 
+        model = if model.is_started {
+            if let Some(nowtick) = timer.get_time() {
+                model.update(Message::TriggerTime(nowtick))
+            } else { model }
+        } else { model };
+
         // -----------------
         // Side-effect part
         // -----------------
-
-        // Update for GUI
         rstate = render(rstate, &model).unwrap();
         if model.is_started {
             timer.start();
