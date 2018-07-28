@@ -249,8 +249,6 @@ impl RenderState {
 
     pub fn diff_state(&self, model: &Model) -> Self {
         let mut rstate = Self::from_model(model);
-
-        let dirty_keys: Vec<String> = Vec::new();
         for (key, val) in &self.current_state {
             if val.clone() != rstate.current_state[key] {
                 rstate.dirty_keys.push(key.clone());
