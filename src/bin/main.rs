@@ -2,63 +2,13 @@ extern crate libc;
 extern crate ncurses;
 extern crate rustodoro;
 
-use std::thread;
 use std::sync::mpsc;
 use std::error::Error;
 
 use ::rustodoro::Message;
 use ::rustodoro::Model;
 
-/* ----------- */
-/* -- Timer -- */
-/* ----------- */
-pub enum TimerState {
-    Start,
-    Pause,
-    End
-}
-
-fn timer_tick() -> (std::thread::JoinHandle<()>, mpsc::Sender<TimerState>, mpsc::Receiver<u64>)
-{
-    let (tx_thread, rx): (mpsc::Sender<u64>, mpsc::Receiver<u64>) = mpsc::channel();
-    let (tx, rx_thread): (mpsc::Sender<TimerState>, mpsc::Receiver<TimerState>) = mpsc::channel();
-
-    let tx_thread = tx_thread.clone();
-
-    let thread = thread::spawn(move || {
-        let mut state = TimerState::Pause;
-        loop {
-            // let thread_cmd: Option<TimerState> = rx_thread.try_recv()
-            let thread_cmd: Option<TimerState> = rx_thread.recv_timeout(std::time::Duration::from_millis(500))
-            .map_err(|e| if e == mpsc::RecvTimeoutError::Disconnected {
-                panic!("{:?}", e.cause().unwrap())
-            } else { e })
-            .ok();
-            if let Some(cmd) = thread_cmd {
-                state = cmd;
-            };
-
-            match state {
-                TimerState::Pause => continue,
-                TimerState::End => break,
-                _ => (),
-            };
-
-            let spec = unsafe {
-                // libc::timespec { tv_sec: 0, tv_nsec: 0 };
-                let mut spec = std::mem::uninitialized();
-                libc::clock_gettime(libc::CLOCK_REALTIME, &mut spec);
-                spec
-            };
-
-            if let Err(e) = tx_thread.send(spec.tv_sec as u64) {
-                panic!("Timer thread error: {}", e);
-            };
-        }
-    });
-
-    (thread, tx, rx)
-}
+mod timer;
 
 /* --------- */
 /* -- GUI -- */
@@ -356,7 +306,7 @@ fn main() {
     gui_start();
 
     // Spawn timer
-    let (thread, tx, rx) = timer_tick();
+    let timer = timer::Timer::new();
 
     loop {
         // Query for keypress
@@ -367,17 +317,16 @@ fn main() {
 
         model = if model.is_started {
             // Query for time ticks
-            let timetick: Option<u64> = rx.try_recv()
+            let timetick: Option<u64> = timer.rx.try_recv()
             .map_err(|e| if e == mpsc::TryRecvError::Disconnected {
                 panic!("{:?}", e.cause().unwrap())
             } else { e })
             .ok();
 
-            let model = if let Some(nowtick) = timetick {
+            if let Some(nowtick) = timetick {
                 // Send Decrement Message!
                 model.update(Message::TriggerTime(nowtick))
-            } else { model };
-            model
+            } else { model }
         } else { model };
 
         model = match ch {
@@ -390,8 +339,8 @@ fn main() {
                     spec
                 };
 
-                model = model.update(Message::Start(spec.tv_sec as u64));
-                model.update(Message::TriggerTime(spec.tv_sec as u64))
+                model.update(Message::Start(spec.tv_sec as u64))
+                .update(Message::TriggerTime(spec.tv_sec as u64))
             },
             _ => model
         };
@@ -403,16 +352,16 @@ fn main() {
         // Update for GUI
         rstate = render(rstate, &model).unwrap();
         if model.is_started {
-            tx.send(TimerState::Start);
+            let _ = timer.tx.send(timer::TimerState::Start);
         };
 
         if model.is_quit {
-            tx.send(TimerState::End);
+            let _ = timer.tx.send(timer::TimerState::End);
             break;
         };
     }
 
-    let _ = thread.join();
+    let _ = timer.thread.join();
 
     gui_end();
 }
