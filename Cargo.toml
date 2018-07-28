@@ -1,9 +1,17 @@
 [package]
-name = "timer"
+name = "rustodoro"
 version = "0.1.0"
 authors = ["Hernawan Fa'iz Abdillah <hernawan.faiz@abdillah.me>"]
 
 [dependencies]
 ncurses = "5.88.0"
 libc = "0.2.42"
-neon = "0.1.23"
+serde_json = "1.0"
+
+[[bin]]
+name = "cursodoro"
+path = "src/bin/main.rs"
+
+[lib]
+name = "rustodoro"
+crate-type = ["rlib", "dylib"]

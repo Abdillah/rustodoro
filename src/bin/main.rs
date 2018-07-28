@@ -1,29 +1,59 @@
 extern crate libc;
 extern crate ncurses;
+extern crate rustodoro;
 
 use std::thread;
 use std::sync::mpsc;
-use std::time::Duration;
 use std::error::Error;
+
+use ::rustodoro::Message;
+use ::rustodoro::Model;
 
 /* ----------- */
 /* -- Timer -- */
 /* ----------- */
-fn timer_tick() -> (std::thread::JoinHandle<()>, mpsc::Sender<u64>,  mpsc::Receiver<u64>)
+pub enum TimerState {
+    Start,
+    Pause,
+    End
+}
+
+fn timer_tick() -> (std::thread::JoinHandle<()>, mpsc::Sender<TimerState>, mpsc::Receiver<u64>)
 {
-    let (tx, rx): (mpsc::Sender<u64>, mpsc::Receiver<u64>) = mpsc::channel();
+    let (tx_thread, rx): (mpsc::Sender<u64>, mpsc::Receiver<u64>) = mpsc::channel();
+    let (tx, rx_thread): (mpsc::Sender<TimerState>, mpsc::Receiver<TimerState>) = mpsc::channel();
 
-    let tx_thread = tx.clone();
+    let tx_thread = tx_thread.clone();
+
     let thread = thread::spawn(move || {
+        let mut state = TimerState::Pause;
         loop {
-            let mut spec;
-            unsafe {
-                // libc::timespec { tv_sec: 0, tv_nsec: 0 };
-                spec = std::mem::uninitialized();
-                libc::clock_gettime(libc::CLOCK_REALTIME, &mut spec);
-            }
+            // let thread_cmd: Option<TimerState> = rx_thread.try_recv()
+            let thread_cmd: Option<TimerState> = rx_thread.recv_timeout(std::time::Duration::from_millis(500))
+            .map_err(|e| if e == mpsc::RecvTimeoutError::Disconnected {
+                panic!("{:?}", e.cause().unwrap())
+            } else { e })
+            .ok();
+            if let Some(cmd) = thread_cmd {
+                state = cmd;
+            };
 
-            tx_thread.send(spec.tv_sec as u64).unwrap();
+            match state {
+                TimerState::Pause => continue,
+                TimerState::End => break,
+                _ => (),
+            };
+
+            let spec = unsafe {
+                // libc::timespec { tv_sec: 0, tv_nsec: 0 };
+                let mut spec = std::mem::uninitialized();
+                libc::clock_gettime(libc::CLOCK_REALTIME, &mut spec);
+                spec
+            };
+
+            if let Err(e) = tx_thread.send(spec.tv_sec as u64) {
+                panic!("Timer thread error: {}", e);
+            };
         }
     });
 
@@ -182,6 +212,7 @@ fn typewriter_printch(x: i32, y: i32, ch: char) -> Rectangle {
 
         for sel_glyph_col in 0..(glyphline.len() as i32) {
             if glyphline[sel_glyph_col as usize] == '#' {
+                ncurses::initscr();
                 if !ncurses::has_colors() {
                     ncurses::endwin();
                     panic!("Your terminal does not support color");
@@ -229,111 +260,98 @@ fn gui_end() {
     endwin();
 }
 
-/* ------------------------- */
-/* --- Model and Message --- */
-/* ------------------------- */
-enum Message {
-    Run(bool),
-    Decrement,
-    Reset,
-    DisplayStatus(String),
-    Quit,
-}
-
-#[derive(Clone)]
-struct Model {
-    pub is_timer_run: bool,
-    pub seconds: u32,
-    pub is_end: bool,
-    pub message: String,
-}
-
-impl std::default::Default for Model {
-    fn default() -> Self { Model { is_timer_run: false, seconds: 25, is_end: false, message: String::from("Press q to exit") } }
-}
-
-impl Model {
-    fn update(self: &Self, msg: Message) -> Self {
-        match msg {
-            Message::Decrement => Model { seconds: self.seconds - 1, ..self.clone() },
-            Message::Run(is_run) => Model { is_timer_run: is_run, ..self.clone() },
-            Message::DisplayStatus(s) => Model { message: s, ..self.clone() },
-            Message::Reset => Model { seconds: 25, ..self.clone() },
-            Message::Quit => Model { is_end: true, ..self.clone() },
-        }
-    }
-
-    fn update_many(self: &Self, msgs: Vec<Message>) -> Self {
-        let mut model = self.clone();
-        for msg in msgs {
-            model = model.update(msg);
-        }
-        model
-    }
-}
-
-
 /* ------------ */
 /* --- View --- */
 /* ------------ */
+use std::collections::HashMap;
+
 #[derive(Clone)]
-struct RenderInfo {
-    pub timer_pos_x: i32,
-    pub timer_pos_y: i32,
-    pub time: String,
-    pub message: String,
+struct RenderState {
+    pub current_state: HashMap<String, String>,
+    pub dirty_keys: Vec<String>,
+
+    // pub timer_pos_x: i32,
+    // pub timer_pos_y: i32,
+    // pub time: String,
+    // pub message: String,
 }
 
-impl std::default::Default for RenderInfo {
+impl std::default::Default for RenderState {
     fn default() -> Self {
-        RenderInfo {
-            timer_pos_x: 0,
-            timer_pos_y: 0,
-            time: String::new(),
-            message: String::new(),
+        RenderState {
+            current_state: HashMap::new(),
+            dirty_keys: vec!(),
+
+            // timer_pos_x: 0,
+            // timer_pos_y: 0,
+            // time: String::new(),
+            // message: String::new(),
         }
     }
 }
 
-impl std::cmp::PartialEq for RenderInfo {
-    fn eq(&self, other: &Self) -> bool {
-        self.timer_pos_x == other.timer_pos_x
-        && self.timer_pos_y == other.timer_pos_y
-        && self.time == other.time
-        && self.message == other.message
+impl RenderState {
+    pub fn from_model(model: &Model) -> Self {
+        Self {
+            current_state: Self::state_from_model(model),
+            dirty_keys: vec!(),
+        }
     }
-}
 
-impl RenderInfo {
-    fn from_model(model: &Model) -> Self {
-        let seconds = model.seconds;
+    fn state_from_model(updated_model: &Model) -> HashMap<String, String> {
+        let seconds = if updated_model.is_started {
+            eprintln!("{} vs {}", updated_model.time_now, updated_model.time_start.unwrap());
+            updated_model.time_now - updated_model.time_start.unwrap()
+        } else {
+            updated_model.interval
+        };
         let time_fmted = format!("{:02}:{:02}", (seconds / 60) as u32, seconds % 60);
 
         let start_x = ncurses::COLS()/2i32 - 17;
         let start_y = ncurses::LINES()/2i32 - 3;
 
-        Self {
-            timer_pos_x: start_x - 1,
-            timer_pos_y: start_y - 2,
-            time: time_fmted,
-            message: model.message.clone(),
-        }
+        let mut rstate: HashMap<String, String> = HashMap::new();
+        rstate.insert("timer_pos_x".to_string(), (start_x - 1).to_string());
+        rstate.insert("timer_pos_y".to_string(), (start_y - 2).to_string());
+        rstate.insert("time".to_string(), time_fmted);
+        // rstate["message"] = model.message.clone();
+        rstate
     }
 
-    /* This function may induce side-effect */
-    fn render(self, model: &Model) -> Result<Self, String> {
-        // Start in the center
-        let win = ncurses::newwin(7, 36, self.timer_pos_y - 1, self.timer_pos_x - 2);
+    pub fn diff_state(&self, model: &Model) -> Self {
+        let mut rstate = self.clone();
+        rstate.current_state = Self::state_from_model(model);
+
+        let dirty_keys: Vec<String> = Vec::new();
+        for (key, _) in &self.current_state {
+            rstate.dirty_keys.push(key.clone());
+        }
+
+        rstate
+    }
+}
+
+/* This function may induce side-effect */
+fn render(rstate: RenderState, model: &Model) -> Result<RenderState, String> {
+    let mut newrstate = rstate.diff_state(model);
+    let state = newrstate.current_state;
+
+    // Start in the center
+    if newrstate.dirty_keys.contains(&"timer_pos_x".to_string()) || newrstate.dirty_keys.contains(&"timer_pos_y".to_string()) {
+        let win = ncurses::newwin(7, 36, state["timer_pos_y"].parse::<i32>().unwrap() - 1, state["timer_pos_x"].parse::<i32>().unwrap() - 2);
         ncurses::box_(win, 0, 0);
         ncurses::wrefresh(win);
 
-        ncurses::mvprintw(ncurses::LINES() - 1, 0, "                                                ");
-        ncurses::mvprintw(ncurses::LINES() - 1, 0, self.message.as_str());
+        // ncurses::mvprintw(ncurses::LINES() - 1, 0, "                                                ");
+        // ncurses::mvprintw(ncurses::LINES() - 1, 0, state["message"].as_str());
 
-        typewriter_print(self.timer_pos_x, self.timer_pos_y, self.time.clone().as_str());
-
-        Ok(self)
+        typewriter_print(state["timer_pos_x"].parse::<i32>().unwrap(), state["timer_pos_y"].parse::<i32>().unwrap(), state["time"].clone().as_str());
+    } else if newrstate.dirty_keys.contains(&"time".to_string()) {
+        typewriter_print(state["timer_pos_x"].parse::<i32>().unwrap(), state["timer_pos_y"].parse::<i32>().unwrap(), state["time"].clone().as_str());
     }
+
+    newrstate.current_state = state;
+    Ok(newrstate)
 }
 
 /* ------------ */
@@ -345,68 +363,76 @@ fn main() {
     // Init model
     let mut model = Model::default();
 
-    // Init RenderInfo
-    let mut rendinfo = RenderInfo::from_model(&model);
-    rendinfo = rendinfo.render(&model).unwrap();
+    // Init RenderState
+    let mut rstate = RenderState::from_model(&model);
+    rstate = render(rstate, &model).unwrap();
 
     // Init GUI
     gui_start();
 
     // Spawn timer
-    let (_, _, rx) = timer_tick();
+    let (thread, tx, rx) = timer_tick();
 
     loop {
         // Query for keypress
-        let ch = ncurses::getch();
-        model = model.update(Message::DisplayStatus(format!("{}", ch)));
+        let ch = match std::char::from_u32(ncurses::getch() as u32) {
+            Some(ch) => ch,
+            None => '\0'
+        };
 
-        if ch == ('q' as i32) {
-            // Send Quit Message!
-            model = model.update_many(vec!(
-                Message::DisplayStatus(String::from("Quit signal sent..")),
-                Message::Quit,
-            ));
-        }
+        model = if model.is_started {
+            // Query for time ticks
+            let timetick: Option<u64> = rx.try_recv()
+            .map_err(|e| if e == mpsc::TryRecvError::Disconnected {
+                panic!("{:?}", e.cause().unwrap())
+            } else { e })
+            .ok();
 
-        if ch == ('r' as i32) {
-            model = model.update_many(vec!(
-                Message::DisplayStatus(String::from("Reset!")),
-                Message::Reset,
-            ));
-        }
-
-        if ch == ('s' as i32) {
-            model = model.update_many(vec!(
-                Message::DisplayStatus(String::from("Start!")),
-                Message::Run(!model.is_timer_run),
-            ));
-        }
-
-        // Query for time ticks
-        let timetick: Option<u64> = rx.try_recv()
-        .map_err(|e| if e == mpsc::TryRecvError::Disconnected {
-            panic!("{:?}", e.cause().unwrap())
-        } else { e })
-        .ok();
-
-
-
-        if model.is_timer_run {
-            if let Some(nowtick) = timetick {
+            let model = if let Some(nowtick) = timetick {
                 // Send Decrement Message!
-                model = model.update(Message::Decrement);
+                model.update(Message::TriggerTime(nowtick))
 
-                let status = format!("Time ticking.. {}", model.seconds);
-                model = model.update(Message::DisplayStatus(status));
-            }
-        }
+                // let status = format!("Time ticking.. {}", model.seconds);
+                // model = model.update(Message::DisplayStatus(status));
+            } else { model };
+            model
+        } else { model };
+
+        // let model = model.update(Message::DisplayStatus(format!("{}", ch)));
+        model = match ch {
+            'q' => model.update(Message::Quit),
+            'r' => model.update(Message::Reset),
+            's' => {
+                let spec = unsafe {
+                    // libc::timespec { tv_sec: 0, tv_nsec: 0 };
+                    let mut spec = std::mem::uninitialized();
+                    libc::clock_gettime(libc::CLOCK_REALTIME, &mut spec);
+                    spec
+                };
+
+                model = model.update(Message::Start(spec.tv_sec as u64));
+                model.update(Message::TriggerTime(spec.tv_sec as u64))
+            },
+            _ => model
+        };
+
+        // -----------------
+        // Side-effect part
+        // -----------------
 
         // Update for GUI
-        rendinfo = rendinfo.render(&model).unwrap();
-        if model.is_end {
+        rstate = render(rstate, &model).unwrap();
+        if model.is_started {
+            tx.send(TimerState::Start);
+        };
+
+        if model.is_quit {
+            tx.send(TimerState::End);
             break;
-        }
+        };
     }
+
+    let _ = thread.join();
 
     gui_end();
 }
