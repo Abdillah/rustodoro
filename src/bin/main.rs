@@ -269,11 +269,6 @@ use std::collections::HashMap;
 struct RenderState {
     pub current_state: HashMap<String, String>,
     pub dirty_keys: Vec<String>,
-
-    // pub timer_pos_x: i32,
-    // pub timer_pos_y: i32,
-    // pub time: String,
-    // pub message: String,
 }
 
 impl std::default::Default for RenderState {
@@ -281,11 +276,6 @@ impl std::default::Default for RenderState {
         RenderState {
             current_state: HashMap::new(),
             dirty_keys: vec!(),
-
-            // timer_pos_x: 0,
-            // timer_pos_y: 0,
-            // time: String::new(),
-            // message: String::new(),
         }
     }
 }
@@ -312,7 +302,6 @@ impl RenderState {
         rstate.insert("timer_pos_x".to_string(), (start_x - 1).to_string());
         rstate.insert("timer_pos_y".to_string(), (start_y - 2).to_string());
         rstate.insert("time".to_string(), time_fmted);
-        // rstate["message"] = model.message.clone();
         rstate
     }
 
@@ -340,9 +329,6 @@ fn render(rstate: RenderState, model: &Model) -> Result<RenderState, String> {
         let win = ncurses::newwin(7, 36, state["timer_pos_y"].parse::<i32>().unwrap() - 1, state["timer_pos_x"].parse::<i32>().unwrap() - 2);
         ncurses::box_(win, 0, 0);
         ncurses::wrefresh(win);
-
-        // ncurses::mvprintw(ncurses::LINES() - 1, 0, "                                                ");
-        // ncurses::mvprintw(ncurses::LINES() - 1, 0, state["message"].as_str());
 
         typewriter_print(state["timer_pos_x"].parse::<i32>().unwrap(), state["timer_pos_y"].parse::<i32>().unwrap(), state["time"].clone().as_str());
     } else if newrstate.dirty_keys.contains(&"time".to_string()) {
@@ -390,20 +376,15 @@ fn main() {
             let model = if let Some(nowtick) = timetick {
                 // Send Decrement Message!
                 model.update(Message::TriggerTime(nowtick))
-
-                // let status = format!("Time ticking.. {}", model.seconds);
-                // model = model.update(Message::DisplayStatus(status));
             } else { model };
             model
         } else { model };
 
-        // let model = model.update(Message::DisplayStatus(format!("{}", ch)));
         model = match ch {
             'q' => model.update(Message::Quit),
             'r' => model.update(Message::Reset),
             's' => {
                 let spec = unsafe {
-                    // libc::timespec { tv_sec: 0, tv_nsec: 0 };
                     let mut spec = std::mem::uninitialized();
                     libc::clock_gettime(libc::CLOCK_REALTIME, &mut spec);
                     spec
