@@ -169,11 +169,11 @@ fn typewriter_printch(x: i32, y: i32, ch: char) -> Rectangle {
                 ncurses::init_pair(1, -1, ncurses::constants::COLOR_RED);
 
                 ncurses::attron(ncurses::COLOR_PAIR(1));
-                ncurses::mvaddch(y + sel_glyph_row, x + sel_glyph_col, ' ' as u32);
+                ncurses::mvaddch(y + sel_glyph_row, x + sel_glyph_col, ' ' as ncurses::ll::chtype);
                 ncurses::attroff(ncurses::COLOR_PAIR(1));
             } else {
                 // Delete
-                ncurses::mvaddch(y + sel_glyph_row, x + sel_glyph_col, ' ' as u32);
+                ncurses::mvaddch(y + sel_glyph_row, x + sel_glyph_col, ' ' as ncurses::ll::chtype);
             }
 
             rect = Rectangle(x, y, sel_glyph_col,  sel_glyph_row);
