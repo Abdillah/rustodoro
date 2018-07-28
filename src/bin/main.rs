@@ -299,12 +299,10 @@ impl RenderState {
     }
 
     fn state_from_model(updated_model: &Model) -> HashMap<String, String> {
-        let seconds = if updated_model.is_started {
-            eprintln!("{} vs {}", updated_model.time_now, updated_model.time_start.unwrap());
-            updated_model.time_now - updated_model.time_start.unwrap()
-        } else {
-            updated_model.interval
-        };
+        let elapsed = if updated_model.is_started {
+            updated_model.time_now - if let Some(time) = updated_model.time_start { time } else { 0 }
+        } else { 0 };
+        let seconds = updated_model.interval - elapsed;
         let time_fmted = format!("{:02}:{:02}", (seconds / 60) as u32, seconds % 60);
 
         let start_x = ncurses::COLS()/2i32 - 17;
