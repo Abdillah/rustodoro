@@ -245,12 +245,7 @@ impl RenderState {
         let seconds = updated_model.interval - elapsed;
         let time_fmted = format!("{:02}:{:02}", (seconds / 60) as u32, seconds % 60);
 
-        let start_x = ncurses::COLS()/2i32 - 17;
-        let start_y = ncurses::LINES()/2i32 - 3;
-
         let mut rstate: HashMap<String, String> = HashMap::new();
-        rstate.insert("timer_pos_x".to_string(), (start_x - 1).to_string());
-        rstate.insert("timer_pos_y".to_string(), (start_y - 2).to_string());
         rstate.insert("time".to_string(), time_fmted);
         rstate
     }
@@ -271,21 +266,17 @@ impl RenderState {
 
 /* This function may induce side-effect */
 fn render(rstate: RenderState, model: &Model) -> Result<RenderState, String> {
-    let mut newrstate = rstate.diff_state(model);
-    let state = newrstate.current_state;
+    let newrstate = rstate.diff_state(model);
 
-    // Start in the center
-    if newrstate.dirty_keys.contains(&"timer_pos_x".to_string()) || newrstate.dirty_keys.contains(&"timer_pos_y".to_string()) {
-        let win = ncurses::newwin(7, 36, state["timer_pos_y"].parse::<i32>().unwrap() - 1, state["timer_pos_x"].parse::<i32>().unwrap() - 2);
-        ncurses::box_(win, 0, 0);
-        ncurses::wrefresh(win);
+    let timer_pos_x = (ncurses::COLS()/2i32 - 17) - 1;
+    let timer_pos_y = (ncurses::LINES()/2i32 - 3) - 2;
 
-        typewriter_print(state["timer_pos_x"].parse::<i32>().unwrap(), state["timer_pos_y"].parse::<i32>().unwrap(), state["time"].clone().as_str());
-    } else if newrstate.dirty_keys.contains(&"time".to_string()) {
-        typewriter_print(state["timer_pos_x"].parse::<i32>().unwrap(), state["timer_pos_y"].parse::<i32>().unwrap(), state["time"].clone().as_str());
-    }
+    let win = ncurses::newwin(7, 36, timer_pos_y - 1, timer_pos_x - 2);
+    ncurses::box_(win, 0, 0);
+    ncurses::wrefresh(win);
 
-    newrstate.current_state = state;
+    typewriter_print(timer_pos_x, timer_pos_y, newrstate.current_state["time"].clone().as_str());
+
     Ok(newrstate)
 }
 
