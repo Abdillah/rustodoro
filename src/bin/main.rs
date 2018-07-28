@@ -2,9 +2,6 @@ extern crate libc;
 extern crate ncurses;
 extern crate rustodoro;
 
-use std::sync::mpsc;
-use std::error::Error;
-
 use ::rustodoro::Message;
 use ::rustodoro::Model;
 
@@ -286,17 +283,12 @@ fn render(rstate: RenderState, model: &Model) -> Result<RenderState, String> {
 fn main() {
     println!("Timer v0.1.0");
 
-    // Init model
     let mut model = Model::default();
-
-    // Init RenderState
     let mut rstate = RenderState::from_model(&model);
     rstate = render(rstate, &model).unwrap();
 
-    // Init GUI
     gui_start();
 
-    // Spawn timer
     let timer = timer::Timer::new();
 
     loop {
@@ -307,14 +299,7 @@ fn main() {
         };
 
         model = if model.is_started {
-            // Query for time ticks
-            let timetick: Option<u64> = timer.rx.try_recv()
-            .map_err(|e| if e == mpsc::TryRecvError::Disconnected {
-                panic!("{:?}", e.cause().unwrap())
-            } else { e })
-            .ok();
-
-            if let Some(nowtick) = timetick {
+            if let Some(nowtick) = timer.get_time() {
                 // Send Decrement Message!
                 model.update(Message::TriggerTime(nowtick))
             } else { model }
@@ -322,7 +307,10 @@ fn main() {
 
         model = match ch {
             'q' => model.update(Message::Quit),
-            'r' => model.update(Message::Reset),
+            'r' => {
+                timer.stop();
+                model.update(Message::Reset)
+            },
             's' => {
                 let spec = unsafe {
                     let mut spec = std::mem::uninitialized();
@@ -343,16 +331,13 @@ fn main() {
         // Update for GUI
         rstate = render(rstate, &model).unwrap();
         if model.is_started {
-            let _ = timer.tx.send(timer::TimerState::Start);
+            timer.start();
         };
 
         if model.is_quit {
-            let _ = timer.tx.send(timer::TimerState::End);
             break;
         };
     }
-
-    let _ = timer.thread.join();
 
     gui_end();
 }

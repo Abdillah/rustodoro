@@ -8,19 +8,22 @@ extern crate libc;
 use std::thread;
 use std::sync::mpsc;
 use std::error::Error;
+use std::ops::Drop;
 
-pub enum TimerState {
+enum TimerState {
     Start,
     Pause,
     End
 }
 
 pub struct Timer {
-    pub thread: std::thread::JoinHandle<()>,
-    pub tx: mpsc::Sender<TimerState>,
-    pub rx: mpsc::Receiver<u64>,
+    thread: Option<std::thread::JoinHandle<()>>,
+    tx: mpsc::Sender<TimerState>,
+    rx: mpsc::Receiver<u64>,
 }
 
+/// `struct Timer` internally implement separate thread with mpsc duplex communication. The thread
+/// will be cleaned up once the `struct Timer` goes out of scope.
 impl Timer {
     pub fn new() -> Self {
         let (tx_thread, rx): (mpsc::Sender<u64>, mpsc::Receiver<u64>) = mpsc::channel();
@@ -60,7 +63,33 @@ impl Timer {
             }
         });
 
-        Self { thread, tx, rx }
+        Self { thread: Some(thread), tx, rx }
     }
 
+    pub fn start(&self) {
+        let _ = self.tx.send(TimerState::Start);
+    }
+
+    pub fn stop(&self) {
+        let _ = self.tx.send(TimerState::Pause);
+    }
+
+    pub fn get_time(&self) -> Option<u64> {
+        self.rx.try_recv()
+        .map_err(|e| if e == mpsc::TryRecvError::Disconnected {
+            panic!("{:?}", e.cause().unwrap())
+        } else { e })
+        .ok()
+    }
+}
+
+
+impl Drop for Timer {
+    fn drop(&mut self) {
+        let _ = self.tx.send(TimerState::End);
+
+        if let Some(thread) = self.thread.take() {
+            thread.join().expect("failed to join thread");
+        }
+    }
 }
