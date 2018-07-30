@@ -29,6 +29,11 @@ fn gui_start() {
     // printw("Use the arrow keys to move");
     // mvprintw(LINES() - 1, 0, "Press q to exit");
     refresh();
+
+    if !has_colors() {
+        endwin();
+        panic!("Your terminal does not support color");
+    }
 }
 
 // fn destroy_win(win: ncurses::WINDOW)
@@ -159,11 +164,6 @@ fn typewriter_printch(x: i32, y: i32, ch: char) -> Rectangle {
 
         for sel_glyph_col in 0..(glyphline.len() as i32) {
             if glyphline[sel_glyph_col as usize] == '#' {
-                ncurses::initscr();
-                if !ncurses::has_colors() {
-                    ncurses::endwin();
-                    panic!("Your terminal does not support color");
-                }
                 ncurses::start_color();
                 ncurses::use_default_colors();
                 ncurses::init_pair(1, -1, ncurses::constants::COLOR_RED);
@@ -265,11 +265,18 @@ fn render(rstate: RenderState, model: &Model) -> Result<RenderState, String> {
     let newrstate = rstate.diff_state(model);
 
     if newrstate.dirty_keys.contains(&"time".to_string()) {
+        ncurses::clear();
+
         let timer_pos_x = (ncurses::COLS()/2i32 - 17) - 1;
         let timer_pos_y = (ncurses::LINES()/2i32 - 3) - 2;
 
+        ncurses::use_default_colors();
+        ncurses::init_pair(2, ncurses::constants::COLOR_WHITE, -1);
+        ncurses::refresh();
         let win = ncurses::newwin(7, 36, timer_pos_y - 1, timer_pos_x - 2);
+        ncurses::wattron(win, ncurses::COLOR_PAIR(2));
         ncurses::box_(win, 0, 0);
+        ncurses::wattroff(win, ncurses::COLOR_PAIR(2));
         ncurses::wrefresh(win);
 
         typewriter_print(timer_pos_x, timer_pos_y, newrstate.current_state["time"].clone().as_str());
