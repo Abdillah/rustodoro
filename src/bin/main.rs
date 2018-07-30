@@ -313,14 +313,9 @@ fn main() {
                 model.update(Message::Reset)
             },
             's' => {
-                let spec = unsafe {
-                    let mut spec = std::mem::uninitialized();
-                    libc::clock_gettime(libc::CLOCK_REALTIME, &mut spec);
-                    spec
-                };
-
-                model.update(Message::Start(spec.tv_sec as u64))
-                .update(Message::TriggerTime(spec.tv_sec as u64))
+                let seconds = timer::get_current_timestamp();
+                model.update(Message::Start(seconds as u64))
+                .update(Message::TriggerTime(seconds as u64))
             },
             _ => model
         };

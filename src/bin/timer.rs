@@ -10,6 +10,17 @@ use std::sync::mpsc;
 use std::error::Error;
 use std::ops::Drop;
 
+pub fn get_current_timestamp() -> u64 {
+    let spec = unsafe {
+        // libc::timespec { tv_sec: 0, tv_nsec: 0 };
+        let mut spec = std::mem::uninitialized();
+        libc::clock_gettime(libc::CLOCK_REALTIME, &mut spec);
+        spec
+    };
+
+    spec.tv_sec as u64
+}
+
 enum TimerState {
     Start,
     Pause,
@@ -50,14 +61,7 @@ impl Timer {
                     _ => (),
                 };
 
-                let spec = unsafe {
-                    // libc::timespec { tv_sec: 0, tv_nsec: 0 };
-                    let mut spec = std::mem::uninitialized();
-                    libc::clock_gettime(libc::CLOCK_REALTIME, &mut spec);
-                    spec
-                };
-
-                if let Err(e) = tx_thread.send(spec.tv_sec as u64) {
+                if let Err(e) = tx_thread.send(get_current_timestamp()) {
                     panic!("Timer thread error: {}", e);
                 };
             }
