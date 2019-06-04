@@ -1,0 +1,19 @@
+[package]
+name = "electrodoro"
+version = "0.1.0"
+authors = ["Hernawan Fa'iz Abdillah\n <hernawan.faiz@abdillah.me>"]
+license = "MIT"
+build = "build.rs"
+
+[lib]
+name = "rustodoro_front"
+crate-type = ["dylib"]
+
+[build-dependencies]
+neon-build = "0.2.0"
+
+[dependencies]
+# neon = "0.2.0"
+# neon = { git = "https://github.com/Abdillah/neon.git", branch = "electron-support", features = [ "electron" ] }
+neon = { path = "../../../neon", features = [ "electron" ] }
+librustodoro = { path = "../../librustodoro" }

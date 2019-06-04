@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+        "target": "es3",
+        "module": "CommonJS",
+        "moduleResolution": "Node",
+        "jsx": "react",
+        "jsxFactory": "element",
+        "declaration": true,
+        "outDir": "lib/view/script",
+        "strict": true,
+        "allowSyntheticDefaultImports": true,
+        "esModuleInterop": true
+    },
+    "include": [ "lib/ts/**/*" ],
+    "files": [
+        "lib/ts/index.tsx",
+        "lib/ts/index.d.ts"
+    ]
+}

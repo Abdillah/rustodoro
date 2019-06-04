@@ -1,0 +1,27 @@
+{
+  "name": "rustodoro",
+  "version": "0.1.0",
+  "description": "",
+  "main": "lib/index.js",
+  "author": "Hernawan Fa'iz Abdillah\n <hernawan.faiz@abdillah.me>",
+  "license": "MIT",
+  "dependencies": {
+    "deku": "^2.0.0-rc16",
+    "fp-ts": "^1.18.2",
+    "neon-cli": "^0.2.0"
+  },
+  "scripts": {
+    "builddev": "npm run install && poi && `which electron` lib/index.js",
+    "start": "npm run build && `which electron` lib/index.js",
+    "build": "poi --prod && npm run install",
+    "install": "neon build"
+  },
+  "devDependencies": {
+    "@types/deku": "^2.0.1",
+    "electron": "^5.0.2",
+    "electron-rebuild": "^1.8.5",
+    "poi": "^12.6.10",
+    "typescript": "^3.4.5"
+  },
+  "false": {}
+}

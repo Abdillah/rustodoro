@@ -1,0 +1,15 @@
+[package]
+name = "cursodoro"
+version = "0.1.0"
+authors = ["Hernawan Fa'iz Abdillah <hernawan.faiz@abdillah.me>"]
+edition = "2018"
+
+[dependencies]
+librustodoro = { path = "../librustodoro" }
+libc = "0.2.42"
+ncurses = "=5.88.0"
+
+[[bin]]
+name = "cursodoro"
+path = "src/main.rs"
+
