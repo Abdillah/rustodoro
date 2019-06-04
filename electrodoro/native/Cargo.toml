@@ -14,6 +14,6 @@ neon-build = "0.2.0"
 
 [dependencies]
 # neon = "0.2.0"
-# neon = { git = "https://github.com/Abdillah/neon.git", branch = "electron-support", features = [ "electron" ] }
-neon = { path = "../../../neon", features = [ "electron" ] }
+neon = { git = "https://github.com/Abdillah/neon.git", branch = "electron-support", features = [ "electron" ] }
+# neon = { path = "../../../neon", features = [ "electron" ] }
 librustodoro = { path = "../../librustodoro" }
