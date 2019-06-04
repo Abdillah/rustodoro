@@ -2,3 +2,7 @@ language: rust
 cache: cargo
 rust:
   - 1.32.0
+
+before_install:
+  - sudo apt-get install nodejs
+  - npm install -g electron
