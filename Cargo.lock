@@ -30,7 +30,7 @@ name = "electrodoro"
 version = "0.1.0"
 dependencies = [
  "librustodoro 0.1.0",
- "neon 0.2.0",
+ "neon 0.2.0 (git+https://github.com/Abdillah/neon.git?branch=electron-support)",
  "neon-build 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -80,16 +80,18 @@ dependencies = [
 [[package]]
 name = "neon"
 version = "0.2.0"
+source = "git+https://github.com/Abdillah/neon.git?branch=electron-support#0602f9aeb576207e93c7851453c939d92dfb6114"
 dependencies = [
  "cslice 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "neon-build 0.2.0",
- "neon-runtime 0.2.0",
+ "neon-build 0.2.0 (git+https://github.com/Abdillah/neon.git?branch=electron-support)",
+ "neon-runtime 0.2.0 (git+https://github.com/Abdillah/neon.git?branch=electron-support)",
  "semver 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "neon-build"
 version = "0.2.0"
+source = "git+https://github.com/Abdillah/neon.git?branch=electron-support#0602f9aeb576207e93c7851453c939d92dfb6114"
 
 [[package]]
 name = "neon-build"
@@ -99,6 +101,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 [[package]]
 name = "neon-runtime"
 version = "0.2.0"
+source = "git+https://github.com/Abdillah/neon.git?branch=electron-support#0602f9aeb576207e93c7851453c939d92dfb6114"
 dependencies = [
  "cc 1.0.37 (registry+https://github.com/rust-lang/crates.io-index)",
  "regex 1.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -190,7 +193,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum libc 0.2.58 (registry+https://github.com/rust-lang/crates.io-index)" = "6281b86796ba5e4366000be6e9e18bf35580adf9e63fbe2294aadb587613a319"
 "checksum memchr 2.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2efc7bc57c883d4a4d6e3246905283d8dae951bb3bd32f49d6ef297f546e1c39"
 "checksum ncurses 5.88.0 (registry+https://github.com/rust-lang/crates.io-index)" = "2d57057c7a5508a3d3ced298779928e0022bd4e54d1d85e8809dfb0d16c65ad9"
+"checksum neon 0.2.0 (git+https://github.com/Abdillah/neon.git?branch=electron-support)" = "<none>"
+"checksum neon-build 0.2.0 (git+https://github.com/Abdillah/neon.git?branch=electron-support)" = "<none>"
 "checksum neon-build 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "870c8f0b18ce83d8af6d95b9b723678aef55c047f29e09ac3e3d10ceecf57fd0"
+"checksum neon-runtime 0.2.0 (git+https://github.com/Abdillah/neon.git?branch=electron-support)" = "<none>"
 "checksum pkg-config 0.3.14 (registry+https://github.com/rust-lang/crates.io-index)" = "676e8eb2b1b4c9043511a9b7bea0915320d7e502b0a079fb03f9635a5252b18c"
 "checksum regex 1.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "8f0a0bcab2fd7d1d7c54fa9eae6f43eddeb9ce2e7352f8518a814a4f65d60c58"
 "checksum regex-syntax 0.6.6 (registry+https://github.com/rust-lang/crates.io-index)" = "dcfd8681eebe297b81d98498869d4aae052137651ad7b96822f09ceb690d0a96"

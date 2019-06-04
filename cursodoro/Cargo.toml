@@ -12,4 +12,3 @@ ncurses = "=5.88.0"
 [[bin]]
 name = "cursodoro"
 path = "src/main.rs"
-
