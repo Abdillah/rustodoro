@@ -10,7 +10,7 @@ use std::sync::mpsc;
 use std::error::Error;
 use std::ops::Drop;
 
-pub fn get_current_timestamp() -> u64 {
+pub fn get_current_timestamp() -> f64 {
     let spec = unsafe {
         // libc::timespec { tv_sec: 0, tv_nsec: 0 };
         let mut spec = std::mem::uninitialized();
@@ -18,7 +18,7 @@ pub fn get_current_timestamp() -> u64 {
         spec
     };
 
-    spec.tv_sec as u64
+    spec.tv_sec as f64
 }
 
 enum TimerState {
@@ -30,14 +30,14 @@ enum TimerState {
 pub struct Timer {
     thread: Option<std::thread::JoinHandle<()>>,
     tx: mpsc::Sender<TimerState>,
-    rx: mpsc::Receiver<u64>,
+    rx: mpsc::Receiver<f64>,
 }
 
 /// `struct Timer` internally implement separate thread with mpsc duplex communication. The thread
 /// will be cleaned up once the `struct Timer` goes out of scope.
 impl Timer {
     pub fn new() -> Self {
-        let (tx_thread, rx): (mpsc::Sender<u64>, mpsc::Receiver<u64>) = mpsc::channel();
+        let (tx_thread, rx): (mpsc::Sender<f64>, mpsc::Receiver<f64>) = mpsc::channel();
         let (tx, rx_thread): (mpsc::Sender<TimerState>, mpsc::Receiver<TimerState>) = mpsc::channel();
 
         let tx_thread = tx_thread.clone();
@@ -78,7 +78,7 @@ impl Timer {
         let _ = self.tx.send(TimerState::Pause);
     }
 
-    pub fn get_time(&self) -> Option<u64> {
+    pub fn get_time(&self) -> Option<f64> {
         self.rx.try_recv()
         .map_err(|e| if e == mpsc::TryRecvError::Disconnected {
             panic!("{:?}", e.cause().unwrap())

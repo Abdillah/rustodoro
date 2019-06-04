@@ -4,8 +4,29 @@ extern crate rustodoro;
 
 use ::rustodoro::Message;
 use ::rustodoro::Model;
+use ::rustodoro::timer;
 
-mod timer;
+/**
+* Scenario:
+* - Frontend will only provide a non-blocking function that will be called
+*   when Model changed to refresh the view.
+* - Frontend event can dispatch message into update(). TODO: How to handle?
+*/
+mod frontend_curse {
+    use ::rustodoro::Model;
+
+    fn run(listener: &Fn(Model) -> Model) {
+        // Init model
+        // let model = Model::default();
+
+        // loop {
+        //     // Init listener for first time setup GUI
+        //     let model = listener(model);
+        // }
+
+        unimplemented!()
+    }
+}
 
 /* --------- */
 /* -- GUI -- */
@@ -237,10 +258,10 @@ impl RenderState {
 
     fn state_from_model(updated_model: &Model) -> HashMap<String, String> {
         let elapsed = if updated_model.is_started {
-            updated_model.time_now - if let Some(time) = updated_model.time_start { time } else { 0 }
-        } else { 0 };
+            updated_model.time_now - if let Some(time) = updated_model.time_start { time } else { 0.0 }
+        } else { 0.0 };
         let seconds = updated_model.interval - elapsed;
-        let time_fmted = format!("{:02}:{:02}", (seconds / 60) as u32, seconds % 60);
+        let time_fmted = format!("{:02}:{:02}", (seconds / 60.0) as u32, seconds % 60.0);
 
         let mut rstate: HashMap<String, String> = HashMap::new();
         rstate.insert("time".to_string(), time_fmted);
@@ -289,8 +310,9 @@ fn render(rstate: RenderState, model: &Model) -> Result<RenderState, String> {
 /* --- Init --- */
 /* ------------ */
 fn main() {
-    println!("Timer v0.1.0");
-
+    let a: f64 = 9999999999999999.0;
+    let b: f64 = 9999999999999998.0;
+    println!("Timer v0.1.0 {}", a - b);
 
     let mut model = Model::default();
     let mut rstate = RenderState::default();
@@ -314,8 +336,8 @@ fn main() {
             },
             's' => {
                 let seconds = timer::get_current_timestamp();
-                model.update(Message::Start(seconds as u64))
-                .update(Message::TriggerTime(seconds as u64))
+                model.update(Message::Start(seconds as f64))
+                .update(Message::TriggerTime(seconds as f64))
             },
             _ => model
         };
