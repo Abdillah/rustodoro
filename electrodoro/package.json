@@ -18,7 +18,7 @@
   },
   "devDependencies": {
     "@types/deku": "^2.0.1",
-    "electron": "^5.0.2",
+    "electron": "^11.5.0",
     "electron-rebuild": "^1.8.5",
     "poi": "^12.6.10",
     "typescript": "^3.4.5"
